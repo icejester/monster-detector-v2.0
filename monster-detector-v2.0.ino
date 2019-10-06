@@ -186,6 +186,7 @@ void setup(void)
 void loop(void)
 {
   doBLEProcessing();
+  doPhysicalProcessing();
 }
 
 // ################################################################
@@ -195,7 +196,7 @@ void loop(void)
 // ###
 // ################################################################
 // ################################################################
-void statusChirp()
+void statusMonitor()
 {
   
 }
@@ -246,4 +247,19 @@ void doBLEProcessing()
     }
   }
 }
+
+void doPhysicalProcessing()
+{
+  int scanButton = 0;
+  int buzzTestButton = 0;
+  
+  scanButton = digitalRead(SCAN_BUTTON_PIN);
+  buzzTestButton = digitalRead(BUZZER_BUTTON_PIN);
+
+  if (buzzTestButton == LOW)
+  {
+    doAlarm();
+  }
+}
+
 
