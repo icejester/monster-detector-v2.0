@@ -25,7 +25,7 @@
 
 #include "BluefruitConfig.h"
 
-#include "Adafruit_NeoPixel.h"
+#include <Adafruit_NeoPixel.h>
 
 /*=========================================================================
     APPLICATION SETTINGS
@@ -67,6 +67,7 @@ Adafruit_NeoPixel ringStrip = Adafruit_NeoPixel(RING_NUM_LEDS, RING_PIN, NEO_RGB
 #define CORE_PIN                13
 #define CORE_NUM_LEDS           7
 Adafruit_NeoPixel coreStrip = Adafruit_NeoPixel(CORE_NUM_LEDS, CORE_PIN, NEO_RGB + NEO_KHZ800);
+int direction = 0;
 
 /*=========================================================================*/
 
@@ -112,20 +113,12 @@ void setup(void)
   /* Initialize NeoPixel ring */
   ringStrip.begin();
   ringStrip.setBrightness(5);
-  for (int x = 0; x < RING_NUM_LEDS; x++)
-  {
-    ringStrip.setPixelColor(x, ringStrip.Color(0, 0, 0, 0));
-    ringStrip.show();
-  }
+  clearRing();
 
   /* Initialize NeoPixel core */
   coreStrip.begin();
   coreStrip.setBrightness(5);
-  for (int x = 0; x < CORE_NUM_LEDS; x++)
-  {
-    coreStrip.setPixelColor(x, coreStrip.Color(0, 0, 0));
-    coreStrip.show();
-  }
+  clearCore();
 
   /* Setup BLE stuff */
   Serial.begin(115200);
@@ -187,6 +180,15 @@ void loop(void)
 {
   doBLEProcessing();
   doPhysicalProcessing();
+  statusLight(direction);
+  if(coreStrip.getBrightness() == 0)
+  {
+    direction = 0;
+  }
+  else if(coreStrip.getBrightness() == 20)
+  {
+    direction = 1;
+  }
 }
 
 // ################################################################
@@ -196,20 +198,37 @@ void loop(void)
 // ###
 // ################################################################
 // ################################################################
-void statusMonitor()
+void statusLight(int direction)
 {
+  uint32_t rgbcolor = ringStrip.Color(0,0,255);
+  for (int x = 0; x < 1; x++)
+  {
+    coreStrip.setPixelColor(x, coreStrip.Color(0, 0, 255));
+  }
+
+  int theBrightness = coreStrip.getBrightness();
   
+  if (direction == 0)
+  {
+    theBrightness++;
+  }
+  else
+  {
+    theBrightness--;
+  }
+  coreStrip.setBrightness(theBrightness);
+  coreStrip.show();
 }
 
 void doAlarm()
 {
-  for (int x = 100; x < 2000; x++)
+  for (int x = 1000; x < 2000; x++)
   {
     tone(BUZZER_PIN, x);
   }
   noTone(BUZZER_PIN);
 
-  for (int x = 2000; x > 100; x--)
+  for (int x = 2000; x > 1000; x--)
   {
     tone(BUZZER_PIN, x);
   }
@@ -230,7 +249,8 @@ void doBLEProcessing()
     
     switch (buttnum)
     {
-      case 1: break;
+      case 1: doDanger();
+              break;
       case 2: break;
       case 3: break;
       case 4: break;
@@ -238,7 +258,6 @@ void doBLEProcessing()
     }
     if (pressed)
     {
-      doAlarm();
       Serial.println(" pressed");
     }
     else
@@ -258,8 +277,144 @@ void doPhysicalProcessing()
 
   if (buzzTestButton == LOW)
   {
+    doDanger();
     doAlarm();
+  }
+
+  if(scanButton == LOW)
+  {
+    doScanning();
   }
 }
 
+void doScanning()
+{
+  /*ring vars*/
+  int rW = 0;
+  int rX = 4;
+  int rY = 8;
+  int rZ = 12;
+  /* core vars */
+  int cW = 0;
+  int cX = 2;
+  int cY = 4;
+  int cZ = 6;
+
+  for (int loops = 0; loops < random(225, 550); loops++)
+  {
+    ringStrip.setPixelColor(rW, ringStrip.Color(0,0,150));
+    ringStrip.setPixelColor(rX, ringStrip.Color(150,0,0));
+    ringStrip.setPixelColor(rY, ringStrip.Color(150,0,150));
+    ringStrip.setPixelColor(rZ, ringStrip.Color(0,150,150));
+
+    if(rW == 15){ rW = 0; } else{ rW++; }
+    if(rX == 15){ rX = 0; } else{ rX++; }
+    if(rY == 15){ rY = 0; } else{ rY++; }
+    if(rZ == 15){ rZ = 0; } else{ rZ++; }
+
+    coreStrip.setPixelColor(cW, coreStrip.Color(0,0,150,0));
+    coreStrip.setPixelColor(cX, coreStrip.Color(150,0,0,0));
+    coreStrip.setPixelColor(cY, coreStrip.Color(150,0,150,0));
+    coreStrip.setPixelColor(cZ, coreStrip.Color(0,150,150,0));
+
+    if(cW == 6){ cW = 0; } else{ cW++; }
+    if(cX == 6){ cX = 0; } else{ cX++; }
+    if(cY == 6){ cY = 0; } else{ cY++; }
+    if(cZ == 6){ cZ = 0; } else{ cZ++; }
+    
+    ringStrip.show();
+    coreStrip.show();
+
+    tone(BUZZER_PIN, random(20, 8000));
+    delay(50);
+    noTone(BUZZER_PIN);
+  }
+  
+  for (int x = 0; x < RING_NUM_LEDS; x++)
+  {
+    ringStrip.setPixelColor(x, ringStrip.Color(0,0,0));
+    ringStrip.show();
+  }
+  allClear();
+  allClear();
+}
+
+void allClear()
+{
+  int clearTone = 2500;
+  tone(BUZZER_PIN, clearTone);
+  for (int y = 0; y < 4; y++)
+  {
+    clearTone = clearTone - 500;
+    for(int x = 0; x < RING_NUM_LEDS; x++)
+    {
+      tone(BUZZER_PIN, clearTone);
+      ringStrip.setPixelColor(x, ringStrip.Color(150,0,0));
+    }
+    for(int x = 0; x < CORE_NUM_LEDS; x++)
+    {
+      coreStrip.setPixelColor(x, coreStrip.Color(150,0,0,0));
+    }
+    ringStrip.show();
+    coreStrip.show();
+    delay(150);
+    clearCore();
+    clearRing();
+    delay(150);
+  }
+  noTone(BUZZER_PIN);
+}
+
+void doDanger()
+{
+  tone(BUZZER_PIN, 1000);
+  for (int x = 0; x < RING_NUM_LEDS; x++)
+  {
+    ringStrip.setPixelColor(x, ringStrip.Color(0,150,0));
+    ringStrip.show();
+    delay(50);
+  }
+  coreStrip.setPixelColor(5, coreStrip.Color(0,150,0,0));
+  coreStrip.show();
+  delay(150);
+  coreStrip.setPixelColor(0, coreStrip.Color(0,150,0,0));
+  coreStrip.show();
+  delay(150);
+  coreStrip.setPixelColor(2, coreStrip.Color(0,150,0,0));
+  coreStrip.show();
+  delay(150);
+  coreStrip.setPixelColor(1, coreStrip.Color(0,150,0,0));
+  coreStrip.show();
+  delay(150);
+  coreStrip.setPixelColor(4, coreStrip.Color(0,150,0,0));
+  coreStrip.show();
+  delay(150);
+  coreStrip.setPixelColor(6, coreStrip.Color(0,150,0,0));
+  coreStrip.show();
+  delay(150);
+  coreStrip.setPixelColor(3, coreStrip.Color(0,150,0,0));
+  coreStrip.show();
+  delay(150);
+  noTone(BUZZER_PIN);
+  clearRing();
+  clearCore();
+}
+
+void clearCore()
+{
+  for(int x = 0; x < CORE_NUM_LEDS; x++)
+  {
+    coreStrip.setPixelColor(x, coreStrip.Color(0,0,0));
+  }
+  coreStrip.show();
+}
+
+void clearRing()
+{
+  for(int x = 0; x < RING_NUM_LEDS;x++)
+  {
+    ringStrip.setPixelColor(x, ringStrip.Color(0,0,0,0));
+  }
+  ringStrip.show();
+}
 
